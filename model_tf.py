@@ -98,6 +98,15 @@ class deblur_model():
         self.wgangp_loss()
         self.preceptual_loss()
         self.g_loss = self.LAMBDA_A*self.g_gan_loss + self.p_loss
+        
+        # get the variables in discriminator and generator
+        tvars = tf.trainable_variables()
+        
+        d_vars = [var for var in tvars if 'd_model' in var.name]
+        g_vars = [var for var in tvars if 'g_model' in var.name]
+        
+        self.D_trainer = tf.train.AdamOptimizer().minimize(self.d_loss, var_list=d_vars)
+        self.G_trainer = tf.train.AdamOptimizer().minimize(self.g_loss, var_list=g_vars)
     
     def train(self):
         # implement training on two models
