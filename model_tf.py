@@ -11,7 +11,7 @@ class deblur_model():
         #   d_param(dict): parameters need for discriminator 
         #   g_param(dict): parameters need for generator
         self.d_param = d_param
-        self.h_param = g_param
+        self.g_param = g_param
         self.LAMBDA_A = LAMBDA_A
         self.generator_model()
         self.discriminator_model()
@@ -76,7 +76,7 @@ class deblur_model():
         
         grad = tf.gradients(self.disc_interpolates,self.interpolates)
         gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=1)-1) ** 2) * LAMBDA
-        self.d_loss = self.fake_D - self.real_D + gradient_penalty
+        self.d_loss = tf.reduce_mean(self.fake_D_) - tf.reduce_mean(self.real_D) + gradient_penalty
         
     
     def preceptual_loss(self):
