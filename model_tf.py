@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from utils import res_block
 
 class deblur_model():
     def __init__(self, 
@@ -11,7 +12,7 @@ class deblur_model():
         #   d_param(dict): parameters need for discriminator 
         #   g_param(dict): parameters need for generator
         self.d_param = d_param
-        self.g_param = g_param
+        self.h_param = g_param
         self.LAMBDA_A = LAMBDA_A
         self.generator_model()
         self.discriminator_model()
@@ -19,14 +20,54 @@ class deblur_model():
     
     def generator_model(self):
         # built the generator model 
+        input_size = self.g_param.input_size
+        ngf = self.g_param.ngf
+        n_downsampling =  self.g_param.n_downsampling
+        output_nc = self.g_param.output_nc
+
+        with tf.VariableScope('g_model'):
+            g_input = self.real_A
+
+            _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], padding = 'REFLECTION' )
+            _out = tf.layers.conv2d(_out, filters=ngf, kernel_size=(7，7), strides=(2,2), padding='VALID')
+            _out = tf.layers.batch_normalization(_out)
+            _out = tf.nn.relu(features=_out)
+
+            for i in range(n_downsampling):
+                mult = 2**i
+                _out = tf.layers.conv2d(_out, filters=ngf*mult*2, kernel_size=(3, 3), strides=(2, 2), padding='SAME')
+                _out = tf.layers.batch_normalization(_out)
+                _out = tf.nn.relu(features=_out)
+
+            mult = 2**n_downsampling
+            for i in range(n_blocks_gen):
+                _out = res_block(_out, ngf*mult, use_dropout=True)
+
+            for i in range(n_downsampling):
+                mult = 2**(n_downsampling - i)
+                _out = tf.layers.conv2d(_out, filters=int(ngf * mult / 2), kernel_size=(3, 3), strides=(2, 2), padding='SAME')
+                _out = tf.layers.batch_normalization(_out)
+                _out = tf.nn.relu(features=_out)
+
+            _out = tf.pad( _out, [ [0, 0], [3, 3], [3, 3], [0, 0] ], padding = 'REFLECTION' )
+            _out = tf.layers.conv2d(_out, filters=output_nc, kernel_size=(7，7), strides=(2,2), padding='VALID')
+            _out = tf.nn.tanh(features=_out)
+
+            _out = tf.add(_out, g_input)
+
+            _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
+
+            self.fake_B = _out
+
+
         # output
         #    self.fake_B
-        self.real_A = # a place for the input of blury image
-        # implementations
-        # ...
+        # self.real_A = # a place for the input of blury image
+        # # implementations
+        # # ...
         
-        self.fake_B = # a tensor for the output of the generator_model
-        pass
+        # self.fake_B = # a tensor for the output of the generator_model
+        # pass
     
     def discriminator_model(self):
         # take input from self.fake_B and self.real_B
@@ -76,7 +117,7 @@ class deblur_model():
         
         grad = tf.gradients(self.disc_interpolates,self.interpolates)
         gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=1)-1) ** 2) * LAMBDA
-        self.d_loss = tf.reduce_mean(self.fake_D_) - tf.reduce_mean(self.real_D) + gradient_penalty
+        self.d_loss = self.fake_D - self.real_D + gradient_penalty
         
     
     def preceptual_loss(self):
@@ -98,15 +139,6 @@ class deblur_model():
         self.wgangp_loss()
         self.preceptual_loss()
         self.g_loss = self.LAMBDA_A*self.g_gan_loss + self.p_loss
-        
-        # get the variables in discriminator and generator
-        tvars = tf.trainable_variables()
-        
-        d_vars = [var for var in tvars if 'd_model' in var.name]
-        g_vars = [var for var in tvars if 'g_model' in var.name]
-        
-        self.D_trainer = tf.train.AdamOptimizer().minimize(self.d_loss, var_list=d_vars)
-        self.G_trainer = tf.train.AdamOptimizer().minimize(self.g_loss, var_list=g_vars)
     
     def train(self):
         # implement training on two models
@@ -115,5 +147,3 @@ class deblur_model():
     def generate(self):
         # generate deblured image
         pass
-    
-    
