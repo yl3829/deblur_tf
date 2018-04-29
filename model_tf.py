@@ -1,13 +1,13 @@
 import tensorflow as tf
 import numpy as np
-from utils import res_block,PSNR
+from utils import res_block, PSNR, deprocess_image
 import time
 import os
 
 
 class deblur_model():
     def __init__(self, 
-                 d_param,
+                 param,
                  LAMBDA_A = 100
                  ):
         # input:
@@ -21,7 +21,7 @@ class deblur_model():
     
     def generator_model(self):
         # built the generator model 
-        input_size = self.param.input_size
+        input_size = self.param.g_input_size
         ngf = self.param.ngf
         n_downsampling =  self.param.n_downsampling
         output_nc = self.param.output_nc
@@ -75,7 +75,7 @@ class deblur_model():
     def discriminator_model(self):
         # take input from self.d_fake_B and self.real_B
         # output the result of discrrminator
-        input_size = self.param.input_size
+        input_size = self.param.d_input_size
         ndf = self.param.ndf
         kernel_size = self.param.kernel_size
         n_layers = self.param.n_layers
