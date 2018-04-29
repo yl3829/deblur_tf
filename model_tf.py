@@ -78,7 +78,7 @@ class deblur_model():
         input_size = self.param.d_input_size
         ndf = self.param.ndf
         kernel_size = self.param.kernel_size
-        n_layers = self.param.n_layers
+        n_layers = self.param.n_layers_D
         
         
         with tf.VariableScope('d_model'):
@@ -182,16 +182,16 @@ class deblur_model():
     
     def train(self, 
               train_data,
-              batch_size = 64,
-              epoch_num = 1000,
+              batch_size = 16,
+              epoch_num = 10,
               critic_updates=5,
-              save_freq = 100,
+              save_freq = 2,
               val_freq = 200,
-              show_freq = 10,
+              show_freq = 1,
               pre_trained_model=None):
         # implement training on two models
         cur_model_name = 'Deblur_{}'.format(int(time.time()))
-        sharp, blur = train_data
+        sharp, blur = train_data['B'], train_data['A']
         min_loss = np.inf
         i = 0
         
