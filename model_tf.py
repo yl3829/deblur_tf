@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from utils import res_block
+import time
+import os
 
 class deblur_model():
     def __init__(self, 
@@ -72,40 +74,65 @@ class deblur_model():
         # pass
     
     def discriminator_model(self):
-        # take input from self.fake_B and self.real_B
+        # take input from self.d_fake_B and self.real_B
         # output the result of discrrminator
         input_size = self.d_param.input_size
         ndf = self.d_param.ndf
         kernel_size = self.d_param.kernel_size
         n_layers = self.d_param.n_layers
         
+        
         with tf.VariableScope('d_model'):
             alpha = tf.random_uniform(1)
             
+            self.d_fake_B = tf.placeholder(dtype=tf.float32, [None,input_size,input_size,3], name='d_fake_b')
             self.real_B = tf.placeholder(tf.float32, [None,input_size,input_size,3], name='real_B') # a placeholder for the real sharp image
-            self.interpolates = alpha * self.real_B + (1-alpha) * self.fake_B
+            self.interpolates = alpha * self.real_B + (1-alpha) * self.d_fake_B
             
-            d_input = tf.concat([self.fake_B,self.real_B,self.interpolates],0)
-            bs = tf.shape(self.fake_B)[0]
+            d_input = tf.concat([self.d_fake_B,self.real_B,self.interpolates],0)
+            bs = tf.shape(self.d_fake_B)[0]
             
-            _out = tf.layers.conv2d(d_input, filters=ndf, kernel_size=kernel_size, strides=(2,2), padding='same')
+            _out = tf.layers.conv2d(d_input, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='same')
             _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             for n in range(1,n_layers):
                 nf_mulf = min(2**n, 8)
                 
-                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), padding='same')
+                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='same')
                 _out = tf.layers.batch_normalization(_out)
                 _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             nf_mulf = min(2**n_layers, 8)
-            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), padding='same')
+            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='same')
             _out = tf.layers.batch_normalization(_out)
             _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             self.fake_D = _out[:bs]
             self.real_D = _out[bs:2*bs]
             self.disc_interpolates = _out[2*bs:]
+            
+            
+        with tf.VariableScope('d_model', reuse=True):
+                        
+            d_input = self.fake_B
+            
+            _out = tf.layers.conv2d(d_input, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='same', reuse=True)
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
+            
+            for n in range(1,n_layers):
+                nf_mulf = min(2**n, 8)
+                
+                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='same', reuse=True)
+                _out = tf.layers.batch_normalization(_out)
+                _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
+            
+            nf_mulf = min(2**n_layers, 8)
+            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='same', reuse=True)
+            _out = tf.layers.batch_normalization(_out)
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
+            
+            self.g_fake_D = _out
+
 
     
     def wgangp_loss(self,LAMBDA=10):
@@ -115,11 +142,13 @@ class deblur_model():
         # return:
         #    d_loss: loss for discriminator
         #    g_gan_loss: loss for generator
-        self.g_gan_loss = -tf.reduce_mean(self.fake_D)
+        self.g_gan_loss = -tf.reduce_mean(self.g_fake_D)
+        tf.summary.scalar('generator_wgan_loss',self.g_gan_loss)
         
         grad = tf.gradients(self.disc_interpolates,self.interpolates)
         gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=1)-1) ** 2) * LAMBDA
-        self.d_loss = tf.reduce_mean(self.fake_D_) - tf.reduce_mean(self.real_D) + gradient_penalty
+        self.d_loss = tf.reduce_mean(self.fake_D) - tf.reduce_mean(self.real_D) + gradient_penalty
+        tf.summary.scalar('discriminator_loss', self.d_loss)
         
     
     def preceptual_loss(self):
@@ -134,6 +163,7 @@ class deblur_model():
         vgg.trainable = False
         _out = vgg.vgg.get_layer('block3_conv3').output
         self.p_loss = tf.losses.mean_squared_error(_out[bs:],_out[:bs])
+        tf.summary.scalar('generator_preceptual_loss', self.p_loss)
     
     def init_loss(self):
         # combine the loss of g model and d model 
@@ -141,7 +171,7 @@ class deblur_model():
         self.wgangp_loss()
         self.preceptual_loss()
         self.g_loss = self.LAMBDA_A*self.g_gan_loss + self.p_loss
-        
+        tf.summary.scalar('generator_loss', self.g_loss)
         # get the variables in discriminator and generator
         tvars = tf.trainable_variables()
         
@@ -151,9 +181,68 @@ class deblur_model():
         self.D_trainer = tf.train.AdamOptimizer().minimize(self.d_loss, var_list=d_vars)
         self.G_trainer = tf.train.AdamOptimizer().minimize(self.g_loss, var_list=g_vars)
     
-    def train(self):
+    def train(self, 
+              in_data,
+              batch_size = 64,
+              epoch_num = 1000,
+              critic_updates=5,
+              save_freq = 100,
+              val_freq = 200,
+              show_freq = 10,
+              pre_trained_model=None):
         # implement training on two models
-        pass
+        cur_model_name = 'Deblur_{}'.format(int(time.time()))
+        sharp, blur = in_data
+        min_loss = np.inf
+        i = 0
+        
+        with tf.Session() as sess:
+            merge = tf.summary.merge_all()
+            writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
+
+            saver = tf.train.Saver()
+            sess.run(tf.global_variables_initializer())
+            
+            if pre_trained_model is not None:
+                try:
+                    print("Load the model from: {}".format(pre_trained_model))
+                    saver.restore(sess, 'model/{}'.format(pre_trained_model))
+                    #writer = tf.summary.FileWriterCache.get('log/{}'.format(pre_trained_model))
+                except Exception:
+                    print("Load model Failed!")
+                    pass
+            
+            for epoch in range(epoch_num):
+                permutated_indexes = np.random.permutation(sharp.shape[0])
+                
+                for index in range(int(blur.shape[0] / batch_size)):
+                    batch_indexes = permutated_indexes[index*batch_size:(index+1)*batch_size]
+                    
+                    sharp_batch = sharp[batch_indexes]
+                    blur_batch = blur[batch_indexes]
+                    generated_images,  = sess.runn(self.fake_B, feed_dict={self.real_A: blur_batch})
+                    
+                    for _ in range(critic_updates):
+                        d_loss, _, merge_result = sess.run([self.d_loss,self.D_trainer, merge],
+                                                           feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images})
+                        writer.add_summary(merge_result, i) 
+                    
+                    g_loss, _, merge_result = sess.run([self.g_loss,self.G_trainer, merge],
+                                                       feed_dict={self.real_A: blur_batch})
+                    
+                    if (i+1) % show_freq == 0:
+                        print("{}/{} batch in {}/{} epochs, discriminator loss: {}, generator loss: {}".format(epoch,
+                                                                                                               epoch_num,
+                                                                                                               index,
+                                                                                                               int(blur.shape[0] / batch_size),
+                                                                                                               d_loss,
+                                                                                                               g_loss))
+                    if (i+1) % save_freq == 0:
+                        if not os.path.exists('model/'):
+                            os.makedirs('model/')
+                        saver.save(sess, 'model/{}'.format(cur_model_name))
+                        print('{} Saved'.format(cur_model_name))
+        
     
     def generate(self):
         # generate deblured image
