@@ -23,6 +23,13 @@ def res_block(input, filters, use_dropout=False):
     return result
 
 
+def is_an_image_file(filename):
+    IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg']
+    for ext in IMAGE_EXTENSIONS:
+        if ext in filename:
+            return True
+    return False
+
 def list_image_files(directory):
     files = os.listdir(directory)
     return [os.path.join(directory, f) for f in files if is_an_image_file(f)]
