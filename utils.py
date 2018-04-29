@@ -38,10 +38,21 @@ def load_image(path):
     img = Image.open(path)
     return img
 
+def preprocess_image(cv_img):
+    cv_img = cv_img.resize(RESHAPE)
+    img = np.array(cv_img)
+    img = (img - 127.5) / 127.5
+    return img
+
 def deprocess_image(img):
     img = img * 127.5 + 127.5
     return img.astype('uint8')
 
+def save_image(np_arr, path):
+    img = np_arr * 127.5 + 127.5
+    im = Image.fromarray(img)
+    im.save(path)
+    
 def load_images(path, n_images):
     if n_images < 0:
         n_images = float("inf")
