@@ -84,8 +84,8 @@ class deblur_model():
         with tf.VariableScope('d_model'):
             alpha = tf.random_uniform(1)
             
-            self.d_fake_B = tf.placeholder(dtype=tf.float32, [None,input_size,input_size,3], name='d_fake_b')
-            self.real_B = tf.placeholder(tf.float32, [None,input_size,input_size,3], name='real_B') # a placeholder for the real sharp image
+            self.d_fake_B = tf.placeholder(dtype=tf.float32, shape=[None,input_size,input_size,3], name='d_fake_b')
+            self.real_B = tf.placeholder(tf.float32, shape=[None,input_size,input_size,3], name='real_B') # a placeholder for the real sharp image
             self.interpolates = alpha * self.real_B + (1-alpha) * self.d_fake_B
             
             d_input = tf.concat([self.d_fake_B,self.real_B,self.interpolates],0)
