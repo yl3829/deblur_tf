@@ -27,11 +27,11 @@ class deblur_model():
         output_nc = self.param.output_nc
         n_blocks_gen = self.param.n_blocks_gen
 
-        with tf.VariableScope('g_model'):
+        with tf.variable_scope('g_model'):
             self.real_A = tf.placeholder(dtype=tf.float32, shape=[None,None,None,3], name='real_A')
             g_input = self.real_A
 
-            _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], padding = 'REFLECTION' )
+            _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
             _out = tf.layers.conv2d(_out, filters=ngf, kernel_size=(7,7), strides=(2,2), padding='VALID')
             _out = tf.layers.batch_normalization(_out)
             _out = tf.nn.relu(features=_out)
@@ -52,9 +52,9 @@ class deblur_model():
                 _out = tf.layers.batch_normalization(_out)
                 _out = tf.nn.relu(features=_out)
 
-            _out = tf.pad( _out, [ [0, 0], [3, 3], [3, 3], [0, 0] ], padding = 'REFLECTION' )
+            _out = tf.pad( _out, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
             _out = tf.layers.conv2d(_out, filters=output_nc, kernel_size=(7,7), strides=(2,2), padding='VALID')
-            _out = tf.nn.tanh(features=_out)
+            _out = tf.tanh(x=_out)
 
             _out = tf.add(_out, g_input)
 
@@ -81,8 +81,8 @@ class deblur_model():
         n_layers = self.param.n_layers_D
         
         
-        with tf.VariableScope('d_model'):
-            alpha = tf.random_uniform(1)
+        with tf.variable_scope('d_model'):
+            alpha = tf.random_uniform([1])
             
             self.d_fake_B = tf.placeholder(dtype=tf.float32, shape=[None,input_size,input_size,3], name='d_fake_b')
             self.real_B = tf.placeholder(tf.float32, shape=[None,input_size,input_size,3], name='real_B') # a placeholder for the real sharp image
@@ -111,7 +111,7 @@ class deblur_model():
             self.disc_interpolates = _out[2*bs:]
             
             
-        with tf.VariableScope('d_model', reuse=True):
+        with tf.variable_scope('d_model', reuse=True):
                         
             d_input = self.fake_B
             
@@ -160,7 +160,7 @@ class deblur_model():
         bs = tf.shape(self.fake_B)[0]
         vgg = tf.keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=(256,256,3), input_tensor=_in)
         vgg.trainable = False
-        _out = vgg.vgg.get_layer('block3_conv3').output
+        _out = vgg.get_layer('block3_conv3').output
         self.p_loss = tf.losses.mean_squared_error(_out[bs:],_out[:bs])
         tf.summary.scalar('generator_preceptual_loss', self.p_loss)
     
