@@ -25,8 +25,8 @@ if __name__ == '__main__':
     
     if param.is_train:
         print('Training model')
-        model.train(data)
+        model.train(train_data)
     else:
         print('Debluring')
-        model.generate(data)
+        model.generate(test_data)
     
