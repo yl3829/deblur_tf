@@ -32,13 +32,14 @@ class deblur_model():
             g_input = self.real_A
 
             _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
-            _out = tf.layers.conv2d(_out, filters=ngf, kernel_size=(7,7), strides=(2,2), padding='VALID')
+            _out = tf.layers.conv2d(_out, filters=ngf, kernel_size=(7,7), strides=(1,1), padding='VALID')
             _out = tf.layers.batch_normalization(_out)
             _out = tf.nn.relu(features=_out)
 
             for i in range(n_downsampling):
                 mult = 2**i
-                _out = tf.layers.conv2d(_out, filters=ngf*mult*2, kernel_size=(3, 3), strides=(2, 2), padding='SAME')
+                _out = tf.pad(_out,[[0,0],[1,1],[1,1],[0,0]], mode="CONSTANT")
+                _out = tf.layers.conv2d(_out, filters=ngf*mult*2, kernel_size=(3, 3), strides=(2, 2), padding='VALID')
                 _out = tf.layers.batch_normalization(_out)
                 _out = tf.nn.relu(features=_out)
 
@@ -48,12 +49,14 @@ class deblur_model():
 
             for i in range(n_downsampling):
                 mult = 2**(n_downsampling - i)
-                _out = tf.layers.conv2d(_out, filters=int(ngf * mult / 2), kernel_size=(3, 3), strides=(2, 2), padding='SAME')
+                #_out = tf.pad(_out,[[0,0],[1,1],[1,1],[0,0]], mode="CONSTANT")
+                _out = tf.layers.conv2d_transpose(_out, filters=int(ngf * mult / 2), kernel_size=(3, 3), strides=(2, 2), padding='SAME')
+                #_out = tf.pad(_out,[[0,0],[1,0],[1,0],[0,0]], mode="CONSTANT")
                 _out = tf.layers.batch_normalization(_out)
                 _out = tf.nn.relu(features=_out)
 
             _out = tf.pad( _out, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
-            _out = tf.layers.conv2d(_out, filters=output_nc, kernel_size=(7,7), strides=(2,2), padding='VALID')
+            _out = tf.layers.conv2d(_out, filters=output_nc, kernel_size=(7,7), strides=(1,1), padding='VALID')
             _out = tf.tanh(x=_out)
 
             _out = tf.add(_out, g_input)
