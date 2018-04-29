@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
-from utils import res_block
+from utils import res_block,PSNR
 import time
 import os
+
 
 class deblur_model():
     def __init__(self, 
@@ -180,7 +181,7 @@ class deblur_model():
         self.G_trainer = tf.train.AdamOptimizer().minimize(self.g_loss, var_list=g_vars)
     
     def train(self, 
-              in_data,
+              train_data,
               batch_size = 64,
               epoch_num = 1000,
               critic_updates=5,
@@ -190,7 +191,7 @@ class deblur_model():
               pre_trained_model=None):
         # implement training on two models
         cur_model_name = 'Deblur_{}'.format(int(time.time()))
-        sharp, blur = in_data
+        sharp, blur = train_data
         min_loss = np.inf
         i = 0
         
@@ -218,7 +219,7 @@ class deblur_model():
                     
                     sharp_batch = sharp[batch_indexes]
                     blur_batch = blur[batch_indexes]
-                    generated_images,  = sess.runn(self.fake_B, feed_dict={self.real_A: blur_batch})
+                    generated_images,  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch})
                     
                     for _ in range(critic_updates):
                         d_loss, _, merge_result = sess.run([self.d_loss,self.D_trainer, merge],
@@ -242,6 +243,40 @@ class deblur_model():
                         print('{} Saved'.format(cur_model_name))
         
     
-    def generate(self):
+    def generate(self,test_data,trained_model):
         # generate deblured image
-        pass
+        y_test, x_test = test_data['B'], test_data['A']
+        size=x_test.shape[0]
+        
+        with tf.Session() as sess:
+            saver = tf.train.Saver()
+            sess.run(tf.global_variables_initializer())
+        
+            saver.restore(sess, '{}'.format(trained_model))
+            print("Model restored.")
+            
+            ##Generate deblurred images
+            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test})
+            generated = np.array([deprocess_image(img) for img in generated_test])
+            x_test = deprocess_image(x_test)
+            y_test = deprocess_image(y_test)
+            
+            ##save image
+            for i in range(generated_test.shape[0]):
+                y = y_test[i, :, :, :]
+                x = x_test[i, :, :, :]
+                img = generated[i, :, :, :]
+                output = np.concatenate((y, x, img), axis=1)
+                im = Image.fromarray(output.astype(np.uint8))
+                im.save('deblur'+str(i))
+            
+            ##Calculate Peak Signal Noise Ratio(PSNR)
+            psnr=0
+            for i in range(generated_test.shape[0]):
+                    y = y_test[i, :, :, :]
+                    img = generated[i, :, :, :]
+                    psnr = psnr+PSNR(y,img)
+            psnr_mean = psnr/size
+            print("PSNR of testing data: "+str(psnr_mean))
+           
+                
