@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from model_tf import deblur_model
 import argparse
-from utlis import load_images
+from utils import load_images
 
 if __name__ == '__main__':
     
