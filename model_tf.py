@@ -7,14 +7,12 @@ import os
 class deblur_model():
     def __init__(self, 
                  d_param,
-                 g_param,
                  LAMBDA_A = 100
                  ):
         # input:
         #   d_param(dict): parameters need for discriminator 
         #   g_param(dict): parameters need for generator
-        self.d_param = d_param
-        self.h_param = g_param
+        self.param = param
         self.LAMBDA_A = LAMBDA_A
         self.generator_model()
         self.discriminator_model()
@@ -22,11 +20,11 @@ class deblur_model():
     
     def generator_model(self):
         # built the generator model 
-        input_size = self.g_param.input_size
-        ngf = self.g_param.ngf
-        n_downsampling =  self.g_param.n_downsampling
-        output_nc = self.g_param.output_nc
-        n_blocks_gen = self.g_param.n_blocks_gen
+        input_size = self.param.input_size
+        ngf = self.param.ngf
+        n_downsampling =  self.param.n_downsampling
+        output_nc = self.param.output_nc
+        n_blocks_gen = self.param.n_blocks_gen
 
         with tf.VariableScope('g_model'):
             self.real_A = tf.placeholder(dtype=tf.float32, shape=[None,None,None,3], name='real_A')
@@ -76,10 +74,10 @@ class deblur_model():
     def discriminator_model(self):
         # take input from self.d_fake_B and self.real_B
         # output the result of discrrminator
-        input_size = self.d_param.input_size
-        ndf = self.d_param.ndf
-        kernel_size = self.d_param.kernel_size
-        n_layers = self.d_param.n_layers
+        input_size = self.param.input_size
+        ndf = self.param.ndf
+        kernel_size = self.param.kernel_size
+        n_layers = self.param.n_layers
         
         
         with tf.VariableScope('d_model'):
