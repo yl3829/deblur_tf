@@ -239,10 +239,10 @@ class deblur_model():
                     
                     writer.add_summary(g_merge_result, i)
                     if (i+1) % show_freq == 0:
-                        print("{}/{} batch in {}/{} epochs, discriminator loss: {}, generator loss: {}".format(epoch,
-                                                                                                               epoch_num,
-                                                                                                               index,
+                        print("{}/{} batch in {}/{} epochs, discriminator loss: {}, generator loss: {}".format(index+1,
                                                                                                                int(blur.shape[0] / batch_size),
+                                                                                                               epoch+1,
+                                                                                                               epoch_num,
                                                                                                                d_loss,
                                                                                                                g_loss))
                     if (i+1) % save_freq == 0:
@@ -250,6 +250,7 @@ class deblur_model():
                             os.makedirs('model/')
                         saver.save(sess, 'model/{}'.format(cur_model_name))
                         print('{} Saved'.format(cur_model_name))
+                    i += 1
         
     
     def generate(self,test_data,trained_model):
