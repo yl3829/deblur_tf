@@ -191,7 +191,7 @@ class deblur_model():
               batch_size = 16,
               epoch_num = 10,
               critic_updates=5,
-              save_freq = 2,
+              save_freq = 10,
               val_freq = 200,
               show_freq = 1,
               pre_trained_model=None):
@@ -202,6 +202,7 @@ class deblur_model():
         i = 0
         
         with tf.Session() as sess:
+            merge_all = tf.summary.merge_all()
             merge_D = tf.summary.merge(self.d_merge)
             merge_G = tf.summary.merge(self.g_merge)
             writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)

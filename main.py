@@ -46,7 +46,7 @@ if __name__ == '__main__':
     
     # load data
     train_data = load_images(os.path.join(param.image_dir, "train"),n_images=-1)
-    test_data = load_images(os.path.join(param.image_dir, "train"), n_images=200)
+    test_data = load_images(os.path.join(param.image_dir, "test"), n_images=200)
     
     
     print('Building model')
