@@ -15,9 +15,12 @@ class deblur_model():
         #   g_param(dict): parameters need for generator
         self.param = param
         self.LAMBDA_A = LAMBDA_A
+        self.d_merge = []
+        self.g_merge = []
         self.generator_model()
         self.discriminator_model()
         self.init_loss()
+        
     
     def generator_model(self):
         # built the generator model 
@@ -145,12 +148,12 @@ class deblur_model():
         #    d_loss: loss for discriminator
         #    g_gan_loss: loss for generator
         self.g_gan_loss = -tf.reduce_mean(self.g_fake_D)
-        tf.summary.scalar('generator_wgan_loss',self.g_gan_loss)
+        self.g_merge.append(tf.summary.scalar('generator_wgan_loss', self.g_gan_loss))
         
         grad = tf.gradients(self.disc_interpolates,self.interpolates)
         gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=1)-1) ** 2) * LAMBDA
         self.d_loss = tf.reduce_mean(self.fake_D) - tf.reduce_mean(self.real_D) + gradient_penalty
-        tf.summary.scalar('discriminator_loss', self.d_loss)
+        self.d_merge.append(tf.summary.scalar('discriminator_loss', self.d_loss))
         
     
     def preceptual_loss(self):
@@ -165,7 +168,7 @@ class deblur_model():
         vgg.trainable = False
         _out = vgg.get_layer('block3_conv3').output
         self.p_loss = tf.losses.mean_squared_error(_out[bs:],_out[:bs])
-        tf.summary.scalar('generator_preceptual_loss', self.p_loss)
+        self.g_merge.append(tf.summary.scalar('generator_preceptual_loss', self.p_loss))
     
     def init_loss(self):
         # combine the loss of g model and d model 
@@ -173,7 +176,7 @@ class deblur_model():
         self.wgangp_loss()
         self.preceptual_loss()
         self.g_loss = self.LAMBDA_A*self.g_gan_loss + self.p_loss
-        tf.summary.scalar('generator_loss', self.g_loss)
+        self.g_merge.append(tf.summary.scalar('generator_loss', self.g_loss))
         # get the variables in discriminator and generator
         tvars = tf.trainable_variables()
         
@@ -199,7 +202,8 @@ class deblur_model():
         i = 0
         
         with tf.Session() as sess:
-            merge = tf.summary.merge_all()
+            merge_D = tf.summary.merge(self.d_merge)
+            merge_G = tf.summary.merge(self.g_merge)
             writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
 
             saver = tf.train.Saver()
@@ -222,16 +226,18 @@ class deblur_model():
                     
                     sharp_batch = sharp[batch_indexes]
                     blur_batch = blur[batch_indexes]
-                    generated_images,  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch})
-                    
+                    #print('------------------------------------')
+                    generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch})
+                    #print('------------------------------------')
                     for _ in range(critic_updates):
-                        d_loss, _, merge_result = sess.run([self.d_loss,self.D_trainer, merge],
+                        d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
                                                            feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images})
-                        writer.add_summary(merge_result, i) 
+                    writer.add_summary(d_merge_result, i) 
                     
-                    g_loss, _, merge_result = sess.run([self.g_loss,self.G_trainer, merge],
-                                                       feed_dict={self.real_A: blur_batch})
+                    g_loss, _, g_merge_result = sess.run([self.g_loss,self.G_trainer, merge_G],
+                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch})
                     
+                    writer.add_summary(g_merge_result, i)
                     if (i+1) % show_freq == 0:
                         print("{}/{} batch in {}/{} epochs, discriminator loss: {}, generator loss: {}".format(epoch,
                                                                                                                epoch_num,

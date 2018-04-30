@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--d_input_size', type=int, default=256, help='Generator input size')
     parser.add_argument('--kernel_size', type=int, default=4, help='kernel size factor in discriminator')
     parser.add_argument('--n_layers_D', type=int, default=3, help='only used if which_model_netD==n_layers')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size when training')
     '''
     input_size = self.param.g_input_size
     ngf = self.param.ngf
@@ -52,7 +53,7 @@ if __name__ == '__main__':
     
     if param.is_train:
         print('Training model')
-        model.train(train_data)
+        model.train(train_data, batch_size=param.batch_size)
     else:
         print('Debluring')
         model.generate(test_data, trained_model)

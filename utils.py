@@ -19,7 +19,7 @@ def res_block(input, filters, use_dropout=False):
     _out = tf.layers.batch_normalization(_out)
     
     result = tf.add( _out, input )
-    result = result/2
+    
     return result
 
 
