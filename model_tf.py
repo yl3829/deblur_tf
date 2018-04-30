@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from utils import res_block, PSNR, deprocess_image
+from PIL import Image
 import time
 import os
 
@@ -263,7 +264,8 @@ class deblur_model():
             saver = tf.train.Saver()
             sess.run(tf.global_variables_initializer())
         
-            saver.restore(sess, '{}'.format(trained_model))
+            print("Load the model from: {}".format(trained_model))
+            saver.restore(sess, 'model/{}'.format(trained_model))
             print("Model restored.")
             
             ##Generate deblurred images
@@ -271,7 +273,9 @@ class deblur_model():
             generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             y_test = deprocess_image(y_test)
-            
+            save_to = 'deblur/'+trained_model
+            if not os.path.exists(save_to):
+                os.makedirs(save_to)
             ##save image
             for i in range(generated_test.shape[0]):
                 y = y_test[i, :, :, :]
@@ -279,7 +283,7 @@ class deblur_model():
                 img = generated[i, :, :, :]
                 output = np.concatenate((y, x, img), axis=1)
                 im = Image.fromarray(output.astype(np.uint8))
-                im.save('deblur'+str(i))
+                im.save(save_to+'/'+str(i)+'.png')
             
             ##Calculate Peak Signal Noise Ratio(PSNR)
             psnr=0
