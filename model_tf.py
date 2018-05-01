@@ -66,6 +66,7 @@ class deblur_model():
             _out = tf.add(_out, g_input)
 
             _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
+            #_out = _out/2
 
             self.fake_B = _out
 
@@ -165,7 +166,7 @@ class deblur_model():
         #    p_loss: the preceptual loss for generator
         _in = tf.concat([self.fake_B,self.real_B],axis=0)
         bs = tf.shape(self.fake_B)[0]
-        vgg = tf.keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=(256,256,3), input_tensor=_in)
+        vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet', input_shape=(256,256,3), input_tensor=_in)
         vgg.trainable = False
         _out = vgg.get_layer('block3_conv3').output
         self.p_loss = tf.losses.mean_squared_error(_out[bs:],_out[:bs])
@@ -176,7 +177,7 @@ class deblur_model():
         # and apply them to two different optimizer.
         self.wgangp_loss()
         self.preceptual_loss()
-        self.g_loss = self.LAMBDA_A*self.g_gan_loss + self.p_loss
+        self.g_loss = self.g_gan_loss + self.LAMBDA_A*self.p_loss
         self.g_merge.append(tf.summary.scalar('generator_loss', self.g_loss))
         # get the variables in discriminator and generator
         tvars = tf.trainable_variables()
