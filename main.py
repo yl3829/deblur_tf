@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_layers_D', type=int, default=3, help='only used if which_model_netD==n_layers')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size when training')
     parser.add_argument('--model_name',default=None, help='The pre-trained model name')
+    parser.add_argument('--training_image',default=-1, type=int, help='number of image in training')
     '''
     input_size = self.param.g_input_size
     ngf = self.param.ngf
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     param = parser.parse_args()
     
     # load data
-    train_data = load_images(os.path.join(param.image_dir, "train"),n_images=-1)
+    train_data = load_images(os.path.join(param.image_dir, "train"),n_images=param.training_image)
     test_data = load_images(os.path.join(param.image_dir, "test"), n_images=200)
     
     
@@ -57,5 +58,5 @@ if __name__ == '__main__':
         model.train(train_data, batch_size=param.batch_size, pre_trained_model=param.model_name)
     else:
         print('Debluring')
-        model.generate(test_data, param.model_name)
+        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
     

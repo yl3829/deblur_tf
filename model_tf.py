@@ -18,6 +18,7 @@ class deblur_model():
         self.LAMBDA_A = LAMBDA_A
         self.d_merge = []
         self.g_merge = []
+        self.training = tf.placeholder(dtype=tf.bool)
         self.generator_model()
         self.discriminator_model()
         self.init_loss()
@@ -37,26 +38,26 @@ class deblur_model():
 
             _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
             _out = tf.layers.conv2d(_out, filters=ngf, kernel_size=(7,7), strides=(1,1), padding='VALID')
-            _out = tf.layers.batch_normalization(_out)
+            _out = tf.layers.batch_normalization(_out,training=self.training)
             _out = tf.nn.relu(features=_out)
 
             for i in range(n_downsampling):
                 mult = 2**i
                 _out = tf.pad(_out,[[0,0],[1,1],[1,1],[0,0]], mode="CONSTANT")
                 _out = tf.layers.conv2d(_out, filters=ngf*mult*2, kernel_size=(3, 3), strides=(2, 2), padding='VALID')
-                _out = tf.layers.batch_normalization(_out)
+                _out = tf.layers.batch_normalization(_out,training=self.training)
                 _out = tf.nn.relu(features=_out)
 
             mult = 2**n_downsampling
             for i in range(n_blocks_gen):
-                _out = res_block(_out, ngf*mult, use_dropout=True)
+                _out = res_block(_out, ngf*mult, use_dropout=True, training=self.training)
 
             for i in range(n_downsampling):
                 mult = 2**(n_downsampling - i)
                 #_out = tf.pad(_out,[[0,0],[1,1],[1,1],[0,0]], mode="CONSTANT")
                 _out = tf.layers.conv2d_transpose(_out, filters=int(ngf * mult / 2), kernel_size=(3, 3), strides=(2, 2), padding='SAME')
                 #_out = tf.pad(_out,[[0,0],[1,0],[1,0],[0,0]], mode="CONSTANT")
-                _out = tf.layers.batch_normalization(_out)
+                _out = tf.layers.batch_normalization(_out,training=self.training)
                 _out = tf.nn.relu(features=_out)
 
             _out = tf.pad( _out, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
@@ -88,6 +89,7 @@ class deblur_model():
         kernel_size = self.param.kernel_size
         n_layers = self.param.n_layers_D
         
+        padw = int(np.ceil((kernel_size-1)/2))
         
         with tf.variable_scope('d_model'):
             alpha = tf.random_uniform([1])
@@ -99,19 +101,23 @@ class deblur_model():
             d_input = tf.concat([self.d_fake_B,self.real_B,self.interpolates],0)
             bs = tf.shape(self.d_fake_B)[0]
             
-            _out = tf.layers.conv2d(d_input, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='same')
-            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
+            _out = tf.pad(d_input, [[0,0],[padw,padw],[padw,padw],[0,0]])
+            _out = tf.layers.conv2d(_out, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='VALID')
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2, name='norm0')
             
             for n in range(1,n_layers):
                 nf_mulf = min(2**n, 8)
                 
-                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='same')
-                _out = tf.layers.batch_normalization(_out)
+                _out = tf.pad(_out, [[0,0],[padw,padw],[padw,padw],[0,0]])
+                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='VALID')
+                _out = tf.layers.batch_normalization(_out, training=self.training, name='norm{}'.format(n))
                 _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             nf_mulf = min(2**n_layers, 8)
-            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='same')
-            _out = tf.layers.batch_normalization(_out)
+            
+            _out = tf.pad(_out, [[0,0],[padw,padw],[padw,padw],[0,0]])
+            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='VALID')
+            _out = tf.layers.batch_normalization(_out, training=self.training, name='norm{}'.format(n_layers))
             _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             self.fake_D = _out[:bs]
@@ -123,19 +129,23 @@ class deblur_model():
                         
             d_input = self.fake_B
             
-            _out = tf.layers.conv2d(d_input, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='same', reuse=True)
-            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
+            _out = tf.pad(d_input, [[0,0],[padw,padw],[padw,padw],[0,0]])
+            _out = tf.layers.conv2d(_out, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='VALID', reuse=True)
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2, name='norm0')
             
             for n in range(1,n_layers):
                 nf_mulf = min(2**n, 8)
                 
-                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='same', reuse=True)
-                _out = tf.layers.batch_normalization(_out)
+                _out = tf.pad(_out, [[0,0],[padw,padw],[padw,padw],[0,0]])
+                _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(2,2), name='conv{}'.format(n), padding='VALID', reuse=True)
+                _out = tf.layers.batch_normalization(_out, training=self.training, name='norm{}'.format(n), reuse=True)
                 _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             nf_mulf = min(2**n_layers, 8)
-            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='same', reuse=True)
-            _out = tf.layers.batch_normalization(_out)
+            
+            _out = tf.pad(_out, [[0,0],[padw,padw],[padw,padw],[0,0]])
+            _out = tf.layers.conv2d(_out, filters=ndf*nf_mulf, kernel_size=kernel_size, strides=(1,1), name='conv{}'.format(n_layers), padding='VALID', reuse=True)
+            _out = tf.layers.batch_normalization(_out, training=self.training, name='norm{}'.format(n_layers), reuse=True)
             _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             self.g_fake_D = _out
@@ -230,15 +240,15 @@ class deblur_model():
                     sharp_batch = sharp[batch_indexes]
                     blur_batch = blur[batch_indexes]
                     #print('------------------------------------')
-                    generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch})
+                    generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
                     #print('------------------------------------')
                     for _ in range(critic_updates):
                         d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
-                                                           feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images})
+                                                           feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images, self.training: True})
                     writer.add_summary(d_merge_result, i) 
                     
                     g_loss, _, g_merge_result = sess.run([self.g_loss,self.G_trainer, merge_G],
-                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch})
+                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch, self.training: True})
                     
                     writer.add_summary(g_merge_result, i)
                     if (i+1) % show_freq == 0:
@@ -256,7 +266,7 @@ class deblur_model():
                     i += 1
         
     
-    def generate(self,test_data,trained_model):
+    def generate(self,test_data, batch_size, trained_model):
         # generate deblured image
         y_test, x_test = test_data['B'], test_data['A']
         size=x_test.shape[0]
@@ -270,8 +280,18 @@ class deblur_model():
             print("Model restored.")
             
             ##Generate deblurred images
-            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test})
-            generated = np.array([deprocess_image(img) for img in generated_test])
+            generated=[]
+            for index in range(int(size / batch_size)):
+                _input=x_test[index*batch_size:(index+1)*batch_size]
+                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
+                generated = generated + [deprocess_image(img) for img in generated_test]
+            if not (index+1)*batch_size+1==size:
+                _input=x_test[((index+1)*batch_size+1):]
+                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
+                generated = generated + [deprocess_image(img) for img in generated_test]
+            generated = np.array(generated)    
+            # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
+            # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             y_test = deprocess_image(y_test)
             save_to = 'deblur/'+trained_model
