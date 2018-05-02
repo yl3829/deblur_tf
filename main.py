@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size when training')
     parser.add_argument('--model_name',default=None, help='The pre-trained model name')
     parser.add_argument('--training_image',default=-1, type=int, help='number of image in training')
+    parser.add_argument('--save_freq',default=20, type=int, help='Model save frequency')
     '''
     input_size = self.param.g_input_size
     ngf = self.param.ngf
@@ -58,5 +59,5 @@ if __name__ == '__main__':
         model.train(train_data, batch_size=param.batch_size, pre_trained_model=param.model_name)
     else:
         print('Debluring')
-        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
+        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name, save_freq = param.save_freq)
     
