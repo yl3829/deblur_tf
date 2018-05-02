@@ -200,17 +200,19 @@ class deblur_model():
     
     def train(self, 
               train_data,
-              batch_size = 16,
+              batch_size = 1,
               epoch_num = 10,
               critic_updates=5,
-              save_freq = 10,
+              save_freq = 100,
               val_freq = 200,
               show_freq = 1,
+              generate_image_freq=50,
               pre_trained_model=None):
         # implement training on two models
         cur_model_name = 'Deblur_{}'.format(int(time.time()))
         sharp, blur = train_data['B'], train_data['A']
         min_loss = np.inf
+        save_to = 'deblur_train/'+cur_model_name
         i = 0
         
         with tf.Session() as sess:
@@ -263,6 +265,24 @@ class deblur_model():
                             os.makedirs('model/')
                         saver.save(sess, 'model/{}'.format(cur_model_name))
                         print('{} Saved'.format(cur_model_name))
+                        
+                    ##save image    
+                    if (i+1) % generate_image_freq == 0:
+                        
+                        if not os.path.exists(save_to):
+                            os.makedirs(save_to)
+                            
+                        for j in range(generated_images.shape[0]):
+                            y = sharp_batch[j, :, :, :]
+                            x = blur_batch[j, :, :, :]
+                            img = generated_images[j, :, :, :]
+                            x = deprocess_image(x)
+                            y = deprocess_image(y)
+                            img = deprocess_image(img)
+                            output = np.concatenate((y, x, img), axis=1)
+                            im = Image.fromarray(output.astype(np.uint8))
+                            im.save(save_to+'/'+str(i+1)+'.png')
+                            print('image saved to {}'.format(save_to))
                     i += 1
         
     
@@ -294,7 +314,7 @@ class deblur_model():
             # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             y_test = deprocess_image(y_test)
-            save_to = 'deblur/'+trained_model
+            save_to = 'deblur_test/'+trained_model
             if not os.path.exists(save_to):
                 os.makedirs(save_to)
             ##save image
