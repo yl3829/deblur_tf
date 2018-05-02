@@ -103,7 +103,7 @@ class deblur_model():
             
             _out = tf.pad(d_input, [[0,0],[padw,padw],[padw,padw],[0,0]])
             _out = tf.layers.conv2d(_out, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='VALID')
-            _out = tf.nn.leaky_relu(features=_out, alpha=0.2, name='norm0')
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             for n in range(1,n_layers):
                 nf_mulf = min(2**n, 8)
@@ -131,7 +131,7 @@ class deblur_model():
             
             _out = tf.pad(d_input, [[0,0],[padw,padw],[padw,padw],[0,0]])
             _out = tf.layers.conv2d(_out, filters=ndf, kernel_size=kernel_size, strides=(2,2), name='conv0',padding='VALID', reuse=True)
-            _out = tf.nn.leaky_relu(features=_out, alpha=0.2, name='norm0')
+            _out = tf.nn.leaky_relu(features=_out, alpha=0.2)
             
             for n in range(1,n_layers):
                 nf_mulf = min(2**n, 8)
@@ -195,8 +195,8 @@ class deblur_model():
         d_vars = [var for var in tvars if 'd_model' in var.name]
         g_vars = [var for var in tvars if 'g_model' in var.name]
         
-        self.D_trainer = tf.train.AdamOptimizer().minimize(self.d_loss, var_list=d_vars)
-        self.G_trainer = tf.train.AdamOptimizer().minimize(self.g_loss, var_list=g_vars)
+        self.D_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.d_loss, var_list=d_vars)
+        self.G_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.g_loss, var_list=g_vars)
     
     def train(self, 
               train_data,
@@ -205,8 +205,8 @@ class deblur_model():
               critic_updates=5,
               save_freq = 100,
               val_freq = 200,
-              show_freq = 1,
-              generate_image_freq=50,
+              show_freq = 10,
+              generate_image_freq=10,
               pre_trained_model=None):
         # implement training on two models
         cur_model_name = 'Deblur_{}'.format(int(time.time()))
@@ -238,7 +238,8 @@ class deblur_model():
                 
                 for index in range(int(blur.shape[0] / batch_size)):
                     batch_indexes = permutated_indexes[index*batch_size:(index+1)*batch_size]
-                    
+                    if batch_indexes.shape == ():
+                        batch_indexes = [batch_indexes]
                     sharp_batch = sharp[batch_indexes]
                     blur_batch = blur[batch_indexes]
                     #print('------------------------------------')
@@ -281,8 +282,8 @@ class deblur_model():
                             img = deprocess_image(img)
                             output = np.concatenate((y, x, img), axis=1)
                             im = Image.fromarray(output.astype(np.uint8))
-                            im.save(save_to+'/'+str(i+1)+'.png')
-                            print('image saved to {}'.format(save_to))
+                            im.save(save_to+'/'+str(i+1)+'_'+str(j)+'.png')
+                        print('image saved to {}'.format(save_to))
                     i += 1
         
     
