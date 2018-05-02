@@ -56,8 +56,8 @@ if __name__ == '__main__':
     
     if param.is_train:
         print('Training model')
-        model.train(train_data, batch_size=param.batch_size, pre_trained_model=param.model_name)
+        model.train(train_data, batch_size=param.batch_size, pre_trained_model=param.model_name, save_freq = param.save_freq)
     else:
         print('Debluring')
-        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name, save_freq = param.save_freq)
+        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
     
