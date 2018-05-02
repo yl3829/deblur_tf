@@ -298,7 +298,7 @@ class deblur_model():
             if not os.path.exists(save_to):
                 os.makedirs(save_to)
             ##save image
-            for i in range(generated_test.shape[0]):
+            for i in range(generated.shape[0]):
                 y = y_test[i, :, :, :]
                 x = x_test[i, :, :, :]
                 img = generated[i, :, :, :]
