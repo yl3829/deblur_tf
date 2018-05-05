@@ -301,10 +301,10 @@ class deblur_model():
             
             ##Generate deblurred images
             generated=[]
-            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
+            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:True})
             generated = generated + [deprocess_image(img) for img in generated_test]
             generated = np.array(generated)   
-            # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
+            # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:True})
             # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             y_test = deprocess_image(y_test)
@@ -343,9 +343,9 @@ class deblur_model():
             
             ##Generate deblurred images
             generated=[]
-            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
+            generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:True})
             generated = np.array([deprocess_image(img) for img in generated_test])
-            # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
+            # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:True})
             # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             save_to = 'deblur_generate/'+trained_model
