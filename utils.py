@@ -76,6 +76,18 @@ def load_images(path, n_images):
         'B_paths': np.array(images_B_paths)
     }
 
+def load_own_images(path, n_images):
+    if n_images < 0:
+        n_images = float("inf")
+    all_paths= list_image_files(path)
+    images=[]
+    for path_A in all_paths:
+        img=load_image(path_A)
+        images.append(preprocess_image(img))
+        if len(images) > n_images - 1: break
+
+    return np.array(images)
+
 def PSNR(img1, img2):
     mse = np.mean( (img1/255. - img2/255.) ** 2 )
     if mse == 0:
