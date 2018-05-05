@@ -8,14 +8,12 @@ import os
 
 class deblur_model():
     def __init__(self, 
-                 param,
-                 LAMBDA_A = 100
+                 param
                  ):
         # input:
         #   d_param(dict): parameters need for discriminator 
         #   g_param(dict): parameters need for generator
         self.param = param
-        self.LAMBDA_A = LAMBDA_A
         self.d_merge = []
         self.g_merge = []
         self.training = tf.placeholder(dtype=tf.bool)
@@ -67,7 +65,7 @@ class deblur_model():
             _out = tf.add(_out, g_input)
 
             _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
-            #_out = _out/2
+            # _out = _out/2
 
             self.fake_B = _out
 
@@ -162,9 +160,16 @@ class deblur_model():
         self.g_gan_loss = -tf.reduce_mean(self.g_fake_D)
         self.g_merge.append(tf.summary.scalar('generator_wgan_loss', self.g_gan_loss))
         
-        grad = tf.gradients(self.disc_interpolates,self.interpolates)
-        gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=1)-1) ** 2) * LAMBDA
-        self.d_loss = tf.reduce_mean(self.fake_D) - tf.reduce_mean(self.real_D) + gradient_penalty
+        grad = tf.gradients(self.disc_interpolates,[self.interpolates])[0]
+        # bs = tf.shape(grad)[0]
+        # grad = tf.reshape(grad,[bs,-1])
+        # slopes = tf.sqrt(tf.reduce_sum(tf.square(grad), reduction_indices=[1]))
+        # gradient_penalty = tf.reduce_mean((slopes-1.)**2)
+        gradient_penalty = tf.reduce_mean((tf.norm(grad, ord=2, axis=-1)-1) ** 2) 
+        self.d_merge.append(tf.summary.scalar('gradient_penalty', gradient_penalty))
+        self.d_merge.append(tf.summary.scalar('wgan_loss', tf.reduce_mean(self.fake_D) - tf.reduce_mean(self.real_D) ))
+        
+        self.d_loss = tf.reduce_mean(self.fake_D) - tf.reduce_mean(self.real_D) + gradient_penalty * LAMBDA 
         self.d_merge.append(tf.summary.scalar('discriminator_loss', self.d_loss))
         
     
@@ -187,7 +192,7 @@ class deblur_model():
         # and apply them to two different optimizer.
         self.wgangp_loss()
         self.preceptual_loss()
-        self.g_loss = self.g_gan_loss + self.LAMBDA_A*self.p_loss
+        self.g_loss = self.g_gan_loss + self.param.LAMBDA_A*self.p_loss
         self.g_merge.append(tf.summary.scalar('generator_loss', self.g_loss))
         # get the variables in discriminator and generator
         tvars = tf.trainable_variables()

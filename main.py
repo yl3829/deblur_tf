@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_freq',default=100, type=int, help='Model save frequency')
     parser.add_argument('--epoch_num',default=10, type=int, help='Number of epoch for training')
     parser.add_argument('--generate_image_freq', default=50, type=int, help='Number of iteration to generate image for checking')
+    parser.add_argument('--LAMBDA_A', default=100, type=int, help='The lambda for preceptual loss')
     
     '''
     input_size = self.param.g_input_size
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     
     print('Building model')
     model = deblur_model(param)
-    
+    print(train_data['A'].shape)
     if param.is_train:
         print('Training model')
         model.train(train_data, 
