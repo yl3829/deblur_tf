@@ -14,6 +14,7 @@ class deblur_model():
         #   d_param(dict): parameters need for discriminator 
         #   g_param(dict): parameters need for generator
         self.param = param
+        self.train_critic = tf.placeholder(dtype=tf.float32)
         self.d_merge = []
         self.g_merge = []
         self.training = tf.placeholder(dtype=tf.bool)
@@ -192,16 +193,17 @@ class deblur_model():
         # and apply them to two different optimizer.
         self.wgangp_loss()
         self.preceptual_loss()
-        self.g_loss = self.g_gan_loss + self.param.LAMBDA_A*self.p_loss
+        self.g_loss = self.train_critic*self.g_gan_loss + self.param.LAMBDA_A*self.p_loss
         self.g_merge.append(tf.summary.scalar('generator_loss', self.g_loss))
         # get the variables in discriminator and generator
         tvars = tf.trainable_variables()
         
         d_vars = [var for var in tvars if 'd_model' in var.name]
         g_vars = [var for var in tvars if 'g_model' in var.name]
-        
-        self.D_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.d_loss, var_list=d_vars)
-        self.G_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.g_loss, var_list=g_vars)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            self.D_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.d_loss, var_list=d_vars)
+            self.G_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.g_loss, var_list=g_vars)
     
     def train(self, 
               train_data,
@@ -219,6 +221,8 @@ class deblur_model():
         min_loss = np.inf
         save_to = 'deblur_train/'+cur_model_name
         i = 0
+        train_critic = 0
+        d_loss = None
         
         with tf.Session() as sess:
             merge_all = tf.summary.merge_all()
@@ -240,6 +244,8 @@ class deblur_model():
             
             for epoch in range(epoch_num):
                 permutated_indexes = np.random.permutation(sharp.shape[0])
+                if epoch >= self.param.g_train_num:
+                    train_critic = 1 
                 
                 for index in range(int(blur.shape[0] / batch_size)):
                     batch_indexes = permutated_indexes[index*batch_size:(index+1)*batch_size]
@@ -247,16 +253,17 @@ class deblur_model():
                         batch_indexes = [batch_indexes]
                     sharp_batch = sharp[batch_indexes]
                     blur_batch = blur[batch_indexes]
-                    #print('------------------------------------')
-                    generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
-                    #print('------------------------------------')
-                    for _ in range(critic_updates):
-                        d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
-                                                           feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images, self.training: True})
-                    writer.add_summary(d_merge_result, i) 
+                    if train_critic:
+
+                        generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
+                    
+                        for _ in range(critic_updates):
+                            d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
+                                                               feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images, self.training: True})
+                        writer.add_summary(d_merge_result, i) 
                     
                     g_loss, _, g_merge_result = sess.run([self.g_loss,self.G_trainer, merge_G],
-                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch, self.training: True})
+                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch, self.training: True, self.train_critic:train_critic})
                     
                     writer.add_summary(g_merge_result, i)
                     if (i+1) % show_freq == 0:
@@ -275,6 +282,9 @@ class deblur_model():
                     ##save image    
                     if (i+1) % generate_image_freq == 0:
                         
+                        if not train_critic:
+                            generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
+                        
                         if not os.path.exists(save_to):
                             os.makedirs(save_to)
                             
@@ -285,7 +295,7 @@ class deblur_model():
                             x = deprocess_image(x)
                             y = deprocess_image(y)
                             img = deprocess_image(img)
-                            output = np.concatenate((y, x, img), axis=1)
+                            output = np.concatenate((y, img, x), axis=1)
                             im = Image.fromarray(output.astype(np.uint8))
                             im.save(save_to+'/'+str(i+1)+'_'+str(j)+'.png')
                         print('image saved to {}'.format(save_to))
@@ -311,7 +321,7 @@ class deblur_model():
                 _input=x_test[index*batch_size:(index+1)*batch_size]
                 generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
                 generated = generated + [deprocess_image(img) for img in generated_test]
-            if not (index+1)*batch_size+1==size:
+            if not (index+1)*batch_size==size:
                 _input=x_test[((index+1)*batch_size+1):]
                 generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
                 generated = generated + [deprocess_image(img) for img in generated_test]
@@ -328,7 +338,7 @@ class deblur_model():
                 y = y_test[i, :, :, :]
                 x = x_test[i, :, :, :]
                 img = generated[i, :, :, :]
-                output = np.concatenate((y, x, img), axis=1)
+                output = np.concatenate((y, img, x), axis=1)
                 im = Image.fromarray(output.astype(np.uint8))
                 im.save(save_to+'/'+str(i)+'.png')
             
