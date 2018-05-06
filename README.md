@@ -22,7 +22,7 @@ python organize_dataset.py --dir_in=GOPRO_Large --dir_out=images
 
 ## Deblur customized images:
 
-Save the images you want to deblur in a folder called "own" inside the "image" folder
+Save the images you want to deblur in a folder called `own` inside the `image` folder
 
 ```
 python main.py --customized=1
