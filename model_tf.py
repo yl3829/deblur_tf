@@ -201,8 +201,11 @@ class deblur_model():
         d_vars = [var for var in tvars if 'd_model' in var.name]
         g_vars = [var for var in tvars if 'g_model' in var.name]
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            self.D_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.d_loss, var_list=d_vars)
+        d_update_ops = [op for op in update_ops if 'd_model' in op.name]
+        g_update_ops = [op for op in update_ops if 'g_model' in op.name]
+        #with tf.control_dependencies(d_update_ops):
+        self.D_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.d_loss, var_list=d_vars)
+        with tf.control_dependencies(g_update_ops):
             self.G_trainer = tf.train.AdamOptimizer(learning_rate=0.0001,beta1=0.5,beta2=0.999).minimize(self.g_loss, var_list=g_vars)
     
     def train(self, 
@@ -259,7 +262,9 @@ class deblur_model():
                     
                         for _ in range(critic_updates):
                             d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
-                                                               feed_dict={self.real_B: sharp_batch, self.d_fake_B: generated_images, self.training: True})
+                                                               feed_dict={self.real_B: sharp_batch, 
+                                                                          self.d_fake_B: generated_images, 
+                                                                          self.training: True})
                         writer.add_summary(d_merge_result, i) 
                     
                     g_loss, _, g_merge_result = sess.run([self.g_loss,self.G_trainer, merge_G],
