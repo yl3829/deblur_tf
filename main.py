@@ -49,6 +49,7 @@ if __name__ == '__main__':
             h5f.create_dataset('A', data=train_data['A'])
             h5f.create_dataset('B', data=train_data['B'])
             h5f.close()
+        print(train_data['A'].shape)
     else:
         if param.customized:
             customized_data = load_own_images(os.path.join(param.image_dir, "own"), n_images=-1)
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     
     print('Building model')
     model = deblur_model(param)
-    print(train_data['A'].shape)
+    
     if param.is_train:
         print('Training model')
         model.train(train_data, 
@@ -74,8 +75,7 @@ if __name__ == '__main__':
                            batch_size=param.batch_size, 
                            trained_model=param.model_name, 
                            customized=param.customized,
-                           save_to=param.save_to,
-                           customized=param.customized)
+                           save_to=param.save_to)
         else:
             model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
     

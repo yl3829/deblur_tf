@@ -334,14 +334,14 @@ class deblur_model():
                 generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
                 generated = generated + [deprocess_image(img) for img in generated_test]
             if not (index+1)*batch_size==size:
-                _input=x_test[((index+1)*batch_size+1):]
+                _input=x_test[((index+1)*batch_size):]
                 generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
                 generated = generated + [deprocess_image(img) for img in generated_test]
             generated = np.array(generated)    
             # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
             # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
-            y_test = deprocess_image(y_test)
+            
             
             if not os.path.exists(save_to):
                 os.makedirs(save_to)
@@ -354,6 +354,7 @@ class deblur_model():
                     im = Image.fromarray(output.astype(np.uint8))
                     im.save(save_to+'/'+str(i)+'.png')
             else:    
+                y_test = deprocess_image(y_test)
                 for i in range(generated.shape[0]):
                     y = y_test[i, :, :, :]
                     x = x_test[i, :, :, :]

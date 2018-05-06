@@ -25,7 +25,7 @@ python organize_dataset.py --dir_in=GOPRO_Large --dir_out=images
 Save the images you want to deblur in a folder called `own` inside the `image` folder
 
 ```
-python main.py --customized=1
+python main.py --customized=1 --is_train=0 --model_name=./model/your_model_name
 ```
 
 ## Train a GAN model:
