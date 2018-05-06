@@ -311,7 +311,7 @@ class deblur_model():
             saver.save(sess, 'model/{}'.format(cur_model_name))
             print('{} Saved'.format(cur_model_name))
     
-    def generate(self,test_data, batch_size, trained_model, save_to = 'deblur_test/', customized=False):
+    def generate(self,test_data, batch_size, trained_model, save_to = 'deblur_test/', customized=False, save=True):
         # generate deblured image
         if customized:
             x_test = test_data
@@ -346,30 +346,36 @@ class deblur_model():
             if not os.path.exists(save_to):
                 os.makedirs(save_to)
             ##save image
-            if customized:
-                for i in range(generated.shape[0]):
-                    x = x_test[i, :, :, :]
-                    img = generated[i, :, :, :]
-                    output = np.concatenate((img, x), axis=1)
-                    im = Image.fromarray(output.astype(np.uint8))
-                    im.save(save_to+'/'+str(i)+'.png')
-            else:    
-                y_test = deprocess_image(y_test)
-                for i in range(generated.shape[0]):
-                    y = y_test[i, :, :, :]
-                    x = x_test[i, :, :, :]
-                    img = generated[i, :, :, :]
-                    output = np.concatenate((y, img, x), axis=1)
-                    im = Image.fromarray(output.astype(np.uint8))
-                    im.save(save_to+'/'+str(i)+'.png')
+            if save:
+                if customized:
+                    for i in range(generated.shape[0]):
+                        x = x_test[i, :, :, :]
+                        img = generated[i, :, :, :]
+                        output = np.concatenate((img, x), axis=1)
+                        im = Image.fromarray(output.astype(np.uint8))
+                        im.save(save_to+'/'+str(i)+'.png')
+                else:    
+                    y_test = deprocess_image(y_test)
+                    for i in range(generated.shape[0]):
+                        y = y_test[i, :, :, :]
+                        x = x_test[i, :, :, :]
+                        img = generated[i, :, :, :]
+                        output = np.concatenate((y, img, x), axis=1)
+                        im = Image.fromarray(output.astype(np.uint8))
+                        im.save(save_to+'/'+str(i)+'.png')
                     
-                ##Calculate Peak Signal Noise Ratio(PSNR)
+            ##Calculate Peak Signal Noise Ratio(PSNR)
+            if not customized:
+                if not save:
+                    y_test = deprocess_image(y_test)
                 psnr=0
                 for i in range(size):
                         y = y_test[i, :, :, :]
                         img = generated[i, :, :, :]
                         psnr = psnr+PSNR(y,img)
+                        # print(PSNR(y,img))
                 psnr_mean = psnr/size
                 print("PSNR of testing data: "+str(psnr_mean))
+        return generated
            
                 

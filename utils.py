@@ -38,9 +38,10 @@ def load_image(path):
     img = Image.open(path)
     return img
 
-def preprocess_image(cv_img):
-    RESHAPE=(256,256)
-    cv_img = cv_img.resize(RESHAPE)
+def preprocess_image(cv_img, reshape=True):
+    if reshape:
+        RESHAPE=(256,256)
+        cv_img = cv_img.resize(RESHAPE)
     img = np.array(cv_img)
     img = (img - 127.5) / 127.5
     return img
@@ -83,7 +84,7 @@ def load_own_images(path, n_images):
     images=[]
     for path_A in all_paths:
         img=load_image(path_A)
-        images.append(preprocess_image(img))
+        images.append(preprocess_image(img,reshape=False))
         if len(images) > n_images - 1: break
 
     return np.array(images)

@@ -49,7 +49,7 @@ if __name__ == '__main__':
             h5f.create_dataset('A', data=train_data['A'])
             h5f.create_dataset('B', data=train_data['B'])
             h5f.close()
-        print(train_data['A'].shape)
+        # print(train_data['A'].shape)
     else:
         if param.customized:
             customized_data = load_own_images(os.path.join(param.image_dir, "own"), n_images=-1)
