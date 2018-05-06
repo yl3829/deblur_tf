@@ -1,6 +1,6 @@
 # What is this repo ?
 
-This repository is for the final project of ECBM6040: Neural Networks and Deep Learning Research, the group of DGAN. Implementation of deblur in Tensorflow 
+This repository is for the final project of ECBM6040: Neural Networks and Deep Learning Research, the group of DGAN. Implementation of Deblur GAN in Tensorflow 
 
 Original paper [DeBlur GANs](https://arxiv.org/pdf/1711.07064.pdf). 
 
