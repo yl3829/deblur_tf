@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from model_tf import deblur_model
 import argparse
-from utils import load_images
+from utils import load_images, load_own_images
 import os
 import h5py
 
@@ -31,18 +31,8 @@ if __name__ == '__main__':
     parser.add_argument('--generate_image_freq', default=50, type=int, help='Number of iteration to generate image for checking')
     parser.add_argument('--LAMBDA_A', default=100000, type=int, help='The lambda for preceptual loss')
     parser.add_argument('--g_train_num', default=0, type=int, help='Train the generator for x epoch before adding discriminator')
-    '''
-    input_size = self.param.g_input_size
-    ngf = self.param.ngf
-    n_downsampling =  self.param.n_downsampling
-    output_nc = self.param.output_nc
-    n_blocks_gen = self.param.n_blocks_gen
-    
-    input_size = self.param.d_input_size
-    ndf = self.param.ndf
-    kernel_size = self.param.kernel_size
-    n_layers = self.param.n_layers
-    '''
+    parser.add_argument('--customized', default=0, type=int, help='Generating customized images')
+    parser.add_argument('--save_to', default='deblur_generate/', help='Path to save deblured customized images')
     
     param = parser.parse_args()
     
@@ -60,7 +50,10 @@ if __name__ == '__main__':
             h5f.create_dataset('B', data=train_data['B'])
             h5f.close()
     else:
-        test_data = load_images(os.path.join(param.image_dir, "test"), n_images=param.testing_image)
+        if param.customized:
+            customized_data = load_own_images(os.path.join(param.image_dir, "own"), n_images=-1)
+        else:
+            test_data = load_images(os.path.join(param.image_dir, "test"), n_images=param.testing_image)
     
     
     print('Building model')
@@ -76,5 +69,13 @@ if __name__ == '__main__':
                     generate_image_freq = param.generate_image_freq)
     else:
         print('Debluring')
-        model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
+        if param.customized:
+            model.generate(customized_data, 
+                           batch_size=param.batch_size, 
+                           trained_model=param.model_name, 
+                           customized=param.customized,
+                           save_to=param.save_to,
+                           customized=param.customized)
+        else:
+            model.generate(test_data, batch_size=param.batch_size, trained_model=param.model_name)
     

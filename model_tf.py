@@ -305,13 +305,20 @@ class deblur_model():
                             im.save(save_to+'/'+str(i+1)+'_'+str(j)+'.png')
                         print('image saved to {}'.format(save_to))
                     i += 1
-        
+            
+            if not os.path.exists('model/'):
+                os.makedirs('model/')
+            saver.save(sess, 'model/{}'.format(cur_model_name))
+            print('{} Saved'.format(cur_model_name))
     
-    def generate(self,test_data, batch_size, trained_model):
+    def generate(self,test_data, batch_size, trained_model, save_to = 'deblur_test/', customized=False):
         # generate deblured image
-        y_test, x_test = test_data['B'], test_data['A']
+        if customized:
+            x_test = test_data
+        else:
+            y_test, x_test = test_data['B'], test_data['A']
         size=x_test.shape[0]
-        
+        save_to = save_to+trained_model
         with tf.Session() as sess:
             saver = tf.train.Saver()
             sess.run(tf.global_variables_initializer())
@@ -335,25 +342,33 @@ class deblur_model():
             # generated = np.array([deprocess_image(img) for img in generated_test])
             x_test = deprocess_image(x_test)
             y_test = deprocess_image(y_test)
-            save_to = 'deblur_test/'+trained_model
+            
             if not os.path.exists(save_to):
                 os.makedirs(save_to)
             ##save image
-            for i in range(generated.shape[0]):
-                y = y_test[i, :, :, :]
-                x = x_test[i, :, :, :]
-                img = generated[i, :, :, :]
-                output = np.concatenate((y, img, x), axis=1)
-                im = Image.fromarray(output.astype(np.uint8))
-                im.save(save_to+'/'+str(i)+'.png')
-            
-            ##Calculate Peak Signal Noise Ratio(PSNR)
-            psnr=0
-            for i in range(generated_test.shape[0]):
-                    y = y_test[i, :, :, :]
+            if customized:
+                for i in range(generated.shape[0]):
+                    x = x_test[i, :, :, :]
                     img = generated[i, :, :, :]
-                    psnr = psnr+PSNR(y,img)
-            psnr_mean = psnr/size
-            print("PSNR of testing data: "+str(psnr_mean))
+                    output = np.concatenate((img, x), axis=1)
+                    im = Image.fromarray(output.astype(np.uint8))
+                    im.save(save_to+'/'+str(i)+'.png')
+            else:    
+                for i in range(generated.shape[0]):
+                    y = y_test[i, :, :, :]
+                    x = x_test[i, :, :, :]
+                    img = generated[i, :, :, :]
+                    output = np.concatenate((y, img, x), axis=1)
+                    im = Image.fromarray(output.astype(np.uint8))
+                    im.save(save_to+'/'+str(i)+'.png')
+                    
+                ##Calculate Peak Signal Noise Ratio(PSNR)
+                psnr=0
+                for i in range(size):
+                        y = y_test[i, :, :, :]
+                        img = generated[i, :, :, :]
+                        psnr = psnr+PSNR(y,img)
+                psnr_mean = psnr/size
+                print("PSNR of testing data: "+str(psnr_mean))
            
                 
