@@ -44,4 +44,4 @@ In the floder `model`, we saved two models that we pre-trained for about 20 epoc
 ## Example of Result
 From left to right: Sharp, blurred, deblurred
 
-![image](http://https://github.com/yl3829/deblur_tf/example/7200_0.png) 
+![image](https://github.com/yl3829/deblur_tf/example/7200_0.png) 
