@@ -22,7 +22,7 @@ python organize_dataset.py --dir_in=GOPRO_Large --dir_out=images
 
 ## Deblur customized images:
 
-Save the images you want to deblur in a folder called `own` inside the `image` folder
+Save the images you want to deblur in a folder called `own` inside the `images` folder
 
 ```
 python main.py --customized=1 --is_train=0 --model_name=./model/your_model_name
@@ -38,3 +38,5 @@ python main.py
 python main.py --is_train=0 --testing_image=-1 --model_name=./model/your_model_name
 ```
 
+## Pre-trained model
+In the floder `model`, we saved two models that we pre-trained for about 20 epoches.
