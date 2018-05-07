@@ -65,8 +65,8 @@ class deblur_model():
 
             _out = tf.add(_out, g_input)
 
-            _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
-            # _out = _out/2
+            # _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
+            _out = _out/2
 
             self.fake_B = _out
 
