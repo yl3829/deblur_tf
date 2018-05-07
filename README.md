@@ -39,4 +39,4 @@ python main.py --is_train=0 --testing_image=-1 --model_name=./model/your_model_n
 ```
 
 ## Pre-trained model
-In the floder `model`, we saved two models that we pre-trained for about 20 epoches.
+In the floder `model`, we saved two models that we pre-trained for about 20 epoches. Details about the two models can be found in `model_log.txt`.
