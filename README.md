@@ -52,4 +52,4 @@ From left to right: Sharp, blurred, deblurred
 
 ![image](https://github.com/yl3829/deblur_tf/blob/master/examples/7200_0.png)
 
-See examples in `example`.
+See examples in `examples`.
