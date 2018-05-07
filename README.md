@@ -40,3 +40,8 @@ python main.py --is_train=0 --testing_image=-1 --model_name=./model/your_model_n
 
 ## Pre-trained model
 In the floder `model`, we saved two models that we pre-trained for about 20 epoches. Details about the two models can be found in `model_log.txt`.
+
+## Example of Result
+From left to right: Sharp, blurred, deblurred
+
+![image](http://https://github.com/yl3829/deblur_tf/example/7200_0.png) 
