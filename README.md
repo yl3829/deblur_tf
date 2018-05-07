@@ -45,7 +45,7 @@ Get the [model](https://drive.google.com/drive/folders/1kkcD8GRtkKO720eh9nFNFHD4
 
 Details about the two models can be found in `model_log.txt`. 
 
-Note that you need to log in your **LionMail@Columbia** to get access to the models 
+Note that you need to log in your **LionMail@Columbia** to get access to the models.
 
 ## Example of Result
 From left to right: Sharp, blurred, deblurred
