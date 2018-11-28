@@ -33,6 +33,7 @@ class deblur_model():
 
         with tf.variable_scope('g_model'):
             self.real_A = tf.placeholder(dtype=tf.float32, shape=[None,None,None,3], name='real_A')
+            self.keep_prob = tf.placeholder(dtype=tf.float32,name='keep_rate')
             g_input = self.real_A
 
             _out = tf.pad( g_input, [ [0, 0], [3, 3], [3, 3], [0, 0] ], mode="REFLECT" )
@@ -49,7 +50,7 @@ class deblur_model():
 
             mult = 2**n_downsampling
             for i in range(n_blocks_gen):
-                _out = res_block(_out, ngf*mult, use_dropout=True, training=self.training)
+                _out = res_block(_out, ngf*mult, use_dropout=True, training=self.training, keep_prob=self.keep_prob)
 
             for i in range(n_downsampling):
                 mult = 2**(n_downsampling - i)
@@ -65,8 +66,8 @@ class deblur_model():
 
             _out = tf.add(_out, g_input)
 
-            # _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
-            _out = _out/2
+            _out = tf.clip_by_value( _out, clip_value_min = -1, clip_value_max = 1 )
+            # _out = _out/2
 
             self.fake_B = _out
 
@@ -185,7 +186,8 @@ class deblur_model():
         vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet', input_shape=(256,256,3), input_tensor=_in)
         vgg.trainable = False
         _out = vgg.get_layer('block3_conv3').output
-        self.p_loss = tf.losses.mean_squared_error(_out[bs:],_out[:bs])
+        alpha = 0
+        self.p_loss = alpha * tf.losses.mean_squared_error(_out[bs:],_out[:bs]) + (1-alpha)*tf.reduce_mean(tf.abs(_out[bs:]-_out[:bs]))
         self.g_merge.append(tf.summary.scalar('generator_preceptual_loss', self.p_loss))
     
     def init_loss(self):
@@ -258,7 +260,7 @@ class deblur_model():
                     blur_batch = blur[batch_indexes]
                     if train_critic:
 
-                        generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
+                        generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True, self.keep_prob:1})
                     
                         for _ in range(critic_updates):
                             d_loss, _, d_merge_result = sess.run([self.d_loss,self.D_trainer, merge_D],
@@ -268,7 +270,9 @@ class deblur_model():
                         writer.add_summary(d_merge_result, i) 
                     
                     g_loss, _, g_merge_result = sess.run([self.g_loss,self.G_trainer, merge_G],
-                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch, self.training: True, self.train_critic:train_critic})
+                                                       feed_dict={self.real_A: blur_batch, self.real_B: sharp_batch, 
+                                                                  self.training: True, self.train_critic:train_critic, 
+                                                                  self.keep_prob:0.5})
                     
                     writer.add_summary(g_merge_result, i)
                     if (i+1) % show_freq == 0:
@@ -288,7 +292,7 @@ class deblur_model():
                     if (i+1) % generate_image_freq == 0:
                         
                         if not train_critic:
-                            generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True})
+                            generated_images  = sess.run(self.fake_B, feed_dict={self.real_A: blur_batch, self.training: True, self.keep_prob:1})
                         
                         if not os.path.exists(save_to):
                             os.makedirs(save_to)
@@ -329,13 +333,14 @@ class deblur_model():
             
             ##Generate deblurred images
             generated=[]
+            index = -1
             for index in range(int(size / batch_size)):
                 _input=x_test[index*batch_size:(index+1)*batch_size]
-                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
+                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False, self.keep_prob:1})
                 generated = generated + [deprocess_image(img) for img in generated_test]
             if not (index+1)*batch_size==size:
                 _input=x_test[((index+1)*batch_size):]
-                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False})
+                generated_test = sess.run(self.fake_B, feed_dict={self.real_A: _input, self.training:False, self.keep_prob:1})
                 generated = generated + [deprocess_image(img) for img in generated_test]
             generated = np.array(generated)    
             # generated_test = sess.run(self.fake_B, feed_dict={self.real_A: x_test, self.training:False})
